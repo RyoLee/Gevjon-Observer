@@ -1,0 +1,4 @@
+keyboard==0.13.5
+Pymem==1.8.5
+pywin32==303
+win32gui==221.6
