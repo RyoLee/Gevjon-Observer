@@ -4,3 +4,5 @@
 不同分支对应不同实现，以分支Readme文档为准
 
 本分支为Python内存读取实现
+
+基于[SkywalkerJi/mdt: Yu-Gi-Oh! Master Duel (github.com)](https://github.com/SkywalkerJi/mdt)实现
