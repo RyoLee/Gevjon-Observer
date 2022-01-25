@@ -11,11 +11,24 @@ import win32gui
 import win32con
 import win32file
 import configparser
+import os
+import sys
+import ctypes, sys
 
 
 PIPE_NAME = r'\\.\pipe\GevjonCore'
 
-config_file = "config.ini"
+#数据文件
+cards_db_path = 'cards.json'
+#暂停快捷键
+pause_hotkey = 'ctrl+p'
+#退出快捷键
+exit_hotkey = 'ctrl+q'
+#切换模式快捷键
+switch_hotkey = 'ctrl+s'
+#核心路径
+core_path = 'core'
+
 cid_temp = 0
 translate_type = 0
 pause = True
@@ -146,26 +159,24 @@ def status_change(switch: bool, need_pause: bool, exit: bool):
             print("已切换至决斗卡片检测模式")
         elif translate_type == 0:
             print("已切换至卡组卡片检测模式")
-
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
 
 if __name__ == "__main__":
-    # 加载配置文件
-    con = configparser.ConfigParser()
-    try:
-        con.read(config_file, encoding="utf-8")
-        config = con.items("config")
-        config = dict(config)
-        pause_hotkey = config["pause_hotkey"]
-        exit_hotkey = config["exit_hotkey"]
-        switch_hotkey = config["switch_hotkey"]
-    except:
-        print(f"未找到{config_file}配置文件或配置文件格式有误。")
+
+    if not is_admin():
+        stdout=os.popen('cd '+core_path+ ' && start Gevjon.exe ')
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+        sys.exit()
     # 加载卡片文本
     try:
-        with open(config["cards_db"], "rb") as f:
+        with open(cards_db_path, "rb") as f:
             cards_db = json.load(f)
     except:
-        print(f"未找到{config['cards_db']},请下载后放在同一目录")
+        print(f"未找到{cards_db_path},请下载后放在同一目录")
     # 加载游戏
     try:
         pm = pymem.Pymem("masterduel.exe")
@@ -187,4 +198,5 @@ if __name__ == "__main__":
     p = Thread(target=translate_check_thread)
     p.start()
     p.join()
+    os.system("taskkill /f /im Gevjon.exe")
     
