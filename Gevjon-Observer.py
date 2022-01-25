@@ -1,25 +1,29 @@
 # -*- coding: utf-8 -*-
 
-import win32pipe, win32file
-import sys
 import os
+from random import expovariate
 from threading import Thread
 import pymem
 import keyboard
 import time
 import json
+import win32gui
+import win32con
+import win32file
+import configparser
 
 
 PIPE_NAME = r'\\.\pipe\GevjonCore'
-pause_hotkey = "ctrl+p"
-exit_hotkey = "ctrl+q"
-switch_hotkey = "ctrl+s"
 
-cards_dir = "./cards.json"
-
+config_file = "config.ini"
 cid_temp = 0
-
-def send_to_pipe(msg: str)
+translate_type = 0
+pause = True
+process_exit = False
+enable_debug = False
+cards_db = {}
+    
+def send_to_pipe(msg: str):
     file_handle = win32file.CreateFile(PIPE_NAME,
                                        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
                                        win32file.FILE_SHARE_WRITE, None,
@@ -31,6 +35,11 @@ def send_to_pipe(msg: str)
             win32file.CloseHandle(file_handle)
         except:
             pass
+
+# 清理终端
+def cls():
+    os.system("cls" if os.name == "nt" else "clear")
+
 
 def read_longlongs(pm, base, offsets):
     value = pm.read_longlong(base)
@@ -53,7 +62,7 @@ def get_cid(type: int):
             # print({"deck_cid": deck_cid})
             return deck_cid
         except:
-            print({"deck_cid not_found"})
+            print(f"使用卡组模式检测 deck_cid not_found 可尝试{switch_hotkey}切换模式")
             return 0
 
     while type == 2:
@@ -64,7 +73,7 @@ def get_cid(type: int):
             # print({"duel_cid": duel_cid})
             return duel_cid
         except:
-            print({"duel_cid not_found"})
+            print(f"使用决斗模式检测 duel_cid not_found 可尝试{switch_hotkey}切换模式")
             return 0
 
 
@@ -81,30 +90,26 @@ def translate(type: int):
         # print("翻译决斗卡片")
         cid = get_cid(type)
     else:
-        #print("not support")
+        print("not support")
         return
     if cid and cid_temp != cid:
+        cls()
         get_at = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        #print(f"检测时间:{get_at}")
+        print(f"检测时间:{get_at}")
         cid_temp = cid
-        card_t = cards_db[str(cid)]
-        msg ={}
-        msg["id"] = card_t['id']
-        msg["name"] = card_t['cn_name']
-        msg["desc"] = card_t['text']['types']+'\n'+card_t['text']['desc']
-        msg["mode"] = "issued"
-        #print(
-        #    f"{card_t['cn_name']}(密码:{card_t['id']})\n英文名:{card_t['en_name']}\n日文名:{card_t['jp_name']})\n{card_t['text']['types']}\n{card_t['text']['desc']}\n"
-        #)
-        #print("-----------------------------------")
-        #print(f"{switch_hotkey}切换检测卡组/决斗详细卡片信息,{pause_hotkey}暂停检测,{exit_hotkey}退出程序\n")
-
-
-# 循环
-translate_type = 0
-pause = True
-process_exit = False
-enable_debug = False
+        try:
+            card_t = cards_db[str(cid)]
+            msg ={}
+            msg["id"] = card_t['id']
+            msg["name"] = card_t['cn_name']
+            msg["desc"] = card_t['text']['types']+'\n'+card_t['text']['desc']
+            msg["mode"] = "issued"
+            send_to_pipe(json.dumps(msg,ensure_ascii=False))
+        except Exception as e:
+            print(e)
+            print(f"数据库中未查到该卡,cid:{cid}，如果是新卡请提交issue。如果是token衍生物请忽略。")
+        print("-----------------------------------")
+        print(f"{switch_hotkey}切换检测卡组/决斗详细卡片信息,{pause_hotkey}暂停检测,{exit_hotkey}退出程序\n")
 
 
 def translate_check_thread():
@@ -115,7 +120,7 @@ def translate_check_thread():
 
     while not process_exit:
         if pause:
-            cls()
+            # cls()
             print("暂停")
             print(f"{switch_hotkey}切换检测卡组/决斗,{pause_hotkey}暂停检测,{exit_hotkey}退出程序\n")
         elif translate_type == 0:
@@ -138,17 +143,33 @@ def status_change(switch: bool, need_pause: bool, exit: bool):
     if switch:
         translate_type = int(not bool(translate_type))
         if translate_type == 1:
-            print("翻译卡组卡片")
+            print("已切换至决斗卡片检测模式")
         elif translate_type == 0:
-            print("翻译决斗卡片")
+            print("已切换至卡组卡片检测模式")
 
 
 if __name__ == "__main__":
-    with open("cards.json", "rb") as f:
-        cards_db = json.load(f)
-    pm = pymem.Pymem("masterduel.exe")
-    print("Process id: %s" % pm.process_id)
+    # 加载配置文件
+    con = configparser.ConfigParser()
     try:
+        con.read(config_file, encoding="utf-8")
+        config = con.items("config")
+        config = dict(config)
+        pause_hotkey = config["pause_hotkey"]
+        exit_hotkey = config["exit_hotkey"]
+        switch_hotkey = config["switch_hotkey"]
+    except:
+        print(f"未找到{config_file}配置文件或配置文件格式有误。")
+    # 加载卡片文本
+    try:
+        with open(config["cards_db"], "rb") as f:
+            cards_db = json.load(f)
+    except:
+        print(f"未找到{config['cards_db']},请下载后放在同一目录")
+    # 加载游戏
+    try:
+        pm = pymem.Pymem("masterduel.exe")
+        print("Process id: %s" % pm.process_id)
         baseAddress = pymem.process.module_from_name(
             pm.process_handle, "GameAssembly.dll"
         ).lpBaseOfDll
@@ -157,7 +178,7 @@ if __name__ == "__main__":
         deck_addr = baseAddress + int("0x01CCD278", base=16)
         duel_addr = baseAddress + int("0x01cb2b90", base=16)
     except:
-        print("baseAddress not_found")
+        print("游戏未启动，请先启动游戏，baseAddress not_found")
 
     keyboard.add_hotkey(switch_hotkey, status_change, args=(True, False, False))
     keyboard.add_hotkey(exit_hotkey, status_change, args=(False, False, True))
@@ -166,3 +187,4 @@ if __name__ == "__main__":
     p = Thread(target=translate_check_thread)
     p.start()
     p.join()
+    
