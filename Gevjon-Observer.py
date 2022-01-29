@@ -42,7 +42,7 @@ oppo_addr = None
 sleep_time = 0.1
   
 @atexit.register 
-def closeUI(): 
+def close_ui(): 
     if is_admin():
         os.system("taskkill /f /im Gevjon.exe")
 
@@ -153,14 +153,11 @@ def print_card(cid: int):
         try:
             card_t = cards_db[str(cid)]
             msg ={}
-            msg["id"] = card_t['id']
+            msg["id"] = str(card_t['id'])
             msg["name"] = card_t['cn_name']
-            msg["desc"] = '【'+card_t['en_name']+'】'+'\n'
-            +'【'+card_t['jp_name']+'】'+'\n'
-            +'【'+card_t['cn_name']+'】'+'\n\n'
-            + card_t['text']['types']+'\n\n'
-            if card_t["text"]["pdesc"]:
-                msg["desc"]+=card_t['text']['pdesc']+'\n\n'
+            msg["desc"] = '【'+card_t['en_name']+'】\n'+ '【'+card_t['jp_name']+'】\n'+ '【'+card_t['cn_name']+'】\n\n'+ str(card_t['text']['types'])+'\n\n\n'
+            if 'pdesc' in card_t["text"] and ""!=card_t["text"]["pdesc"]:
+                msg["desc"]+='------------------------\n'+str(card_t['text']['pdesc'])+'\n------------------------\n\n\n'
             msg["desc"]+=card_t['text']['desc']
             msg["mode"] = "issued"
             send_to_pipe(json.dumps(msg,ensure_ascii=False))
@@ -233,7 +230,7 @@ def config_load():
     global cards_db
     # 加载卡片文本
     try:
-        with open(cards_db_path, "rb") as f:
+        with open(cards_db_path, "r", encoding='UTF-8') as f:
             cards_db = json.load(f)
     except:
         print(f"未找到{cards_db_path},请下载后放在同一目录")
