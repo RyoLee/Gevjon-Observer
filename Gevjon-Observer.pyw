@@ -3,49 +3,60 @@
 import os
 from threading import Thread
 import pymem
-import keyboard
 import time
 import json
-import win32gui
-import win32con
 import win32file
 import os
 import ctypes, sys
-import atexit 
+import atexit
+import logging
+import psutil
 
-
+'''
+config
+'''
 PIPE_NAME = r'\\.\pipe\GevjonCore'
+CARDS_DB_PATH = 'cards.json'
+CORE_PATH = 'core'
+LOG_LEVEL=logging.INFO
+LOG_PATH = "log.txt"
+LOG_FORMAT='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
-#数据文件
-cards_db_path = 'cards.json'
-#暂停快捷键
-pause_hotkey = 'ctrl+p'
-#退出快捷键
-exit_hotkey = 'ctrl+q'
-#切换模式快捷键
-switch_hotkey = 'ctrl+s'
-#核心路径
-core_path = 'core'
-
+'''
+init logger & global params
+'''
+logger = logging.getLogger(__name__)
+logger.setLevel(level = LOG_LEVEL)
+handler = logging.FileHandler(LOG_PATH)
+handler.setLevel(LOG_LEVEL)
+formatter = logging.Formatter(LOG_FORMAT)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 cid_temp = 0
 cid_temp_duel = 0
 cid_temp_deck = 0
 cid_temp_oppo = 0
 cid_show_gui = 0
-pause = False
-process_exit = False
 baseAddress = None
 pm = {}
 deck_addr = None
 duel_addr = None
-oppo_addr = None
+replay_addr = None
 sleep_time = 0.1
-  
+
+'''
+close Gevjon when observer crash
+'''
 @atexit.register 
 def close_ui(): 
     if is_admin():
+        logger.info("quit observer")
+        logger.info("closing Gevjson")
         os.system("taskkill /f /im Gevjon.exe")
 
+'''
+send card data to Gevjon by namedpipe
+'''
 def send_to_pipe(msg: str):
     file_handle = win32file.CreateFile(PIPE_NAME,
                                        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
@@ -53,29 +64,30 @@ def send_to_pipe(msg: str):
                                        win32file.OPEN_EXISTING, 0, None)
     try:
         win32file.WriteFile(file_handle, str.encode(msg))
+    except Exception as ex:
+        logger.warn(ex)
     finally:
         try:
             win32file.CloseHandle(file_handle)
-        except:
-            pass
-
-# 清理终端
-def cls():
-    os.system("cls" if os.name == "nt" else "clear")
-
-
+        except Exception as e:
+            logger.warn(e)
+'''
+read memory
+'''
 def read_longlongs(pm, base, offsets):
     value = pm.read_longlong(base)
     for offset in offsets:
         value = pm.read_longlong(value + offset)
     return value
 
-
+'''
+search card id
+'''
 def get_cid(type: int):
     global pm
     global deck_addr
     global duel_addr
-    global oppo_addr
+    global replay_addr
     while type == 1:
         try:
             deck_pointer_value = (
@@ -95,21 +107,25 @@ def get_cid(type: int):
     while type == 3:
         try:
             oppo_pointer_value = (
-                read_longlongs(pm, oppo_addr, [0xB8, 0x0, 0xF8, 0x140]) + 0x20
+                read_longlongs(pm, replay_addr, [0xB8, 0x0, 0xF8, 0x140]) + 0x20
             )
             oppo_cid = pm.read_int(oppo_pointer_value)
             return oppo_cid
         except:
             return 0
 
-
+'''
+check cid by range
+'''
 def valid_cid(cid: int):
     if cid > 4000 and cid < 20000:
         return True
     else:
         return False
 
-
+'''
+search cid
+'''
 def translate():
     global cid_temp_duel
     global cid_temp_deck
@@ -120,9 +136,7 @@ def translate():
         try:
             get_baseAddress()
         except:
-            print("地址没找到，不执行检测")
             return
-        # print("翻译卡组卡片")
     cid_deck = get_cid(1)
     cid_duel = get_cid(2)
     cid_oppo = get_cid(3)
@@ -141,13 +155,11 @@ def translate():
         cid_update = True
         cid_show_gui = cid_duel
     if cid_update:
-        cls()
-        get_at = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        print(f"检测时间:{get_at}")
-        print("-----------------------------------")
         print_card(cid_show_gui)
-        print("-----------------------------------")
-        print(f"{switch_hotkey}开启检测,{pause_hotkey}暂停检测,{exit_hotkey}退出程序\n")
+
+'''
+format description
+'''
 def print_card(cid: int):
     if valid_cid(cid):
         try:
@@ -161,55 +173,44 @@ def print_card(cid: int):
             msg["desc"]+=card_t['text']['desc']
             msg["mode"] = "issued"
             send_to_pipe(json.dumps(msg,ensure_ascii=False))
-        except:
-            print(f"数据库中未查到该卡,cid:{cid}，如果是新卡请提交issue。如果是token衍生物请忽略。")
+        except Exception as ex:
+            logger.warn(ex)
     else:
         return 0
 
-
+'''
+check loop
+'''
 def translate_check_thread():
-    global pause
-    global process_exit
     global sleep_time
-    while not process_exit:
-        if pause:
-            cls()
-            print("暂停检测")
-            print(f"{switch_hotkey}开启检测,{pause_hotkey}暂停检测,{exit_hotkey}退出程序\n")
-        else:
-            translate()
+    while True:
+        translate()
         time.sleep(sleep_time)
-    print("程序结束")
 
-
-def status_change(switch: bool, need_pause: bool, exit: bool):
-    global pause
-    global process_exit
-    process_exit = exit
-    pause = need_pause
-    if switch:
-        print("已开启检测，请点击一张卡片")
-
-
+'''
+find base address
+'''
 def get_baseAddress():
     global pm
     global baseAddress
     global deck_addr
     global duel_addr
-    global oppo_addr
+    global replay_addr
     pm = pymem.Pymem("masterduel.exe")
-    print("Process id: %s" % pm.process_id)
+    logger.info("Process id: %s" % pm.process_id)
     baseAddress = pymem.process.module_from_name(
         pm.process_handle, "GameAssembly.dll"
     ).lpBaseOfDll
-    print("成功找到模块")
-    # deck 组卡界面 duel 决斗界面 oppo 回放
+    logger.info("address found!")
+    # deck/duel/replay
     deck_addr = baseAddress + int("0x01CCD278", base=16)
     duel_addr = baseAddress + int("0x01cb2b90", base=16)
-    oppo_addr = baseAddress + int("0x01CCD278", base=16)
+    replay_addr = baseAddress + int("0x01CCD278", base=16)
 
 
-# UAC判断
+'''
+check privilege
+'''
 def is_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
@@ -217,35 +218,64 @@ def is_admin():
         return False
 
 
-# UAC重开
+'''
+start Gevjon & restart by admin
+'''
 def uac_reload():
     if not is_admin():
-        stdout=os.popen('cd '+core_path+ ' && start Gevjon.exe ')
+        logger.info("current user is not admin,start Gevjon and restart observer as admin user")
+        stdout=os.popen('cd '+CORE_PATH+ ' && start Gevjon.exe ')
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
         sys.exit()
 
-
-# 加载配置文件
-def config_load():
+'''
+load data
+'''
+def load_db():
     global cards_db
-    # 加载卡片文本
     try:
-        with open(cards_db_path, "r", encoding='UTF-8') as f:
+        with open(CARDS_DB_PATH, "r", encoding='UTF-8') as f:
             cards_db = json.load(f)
-    except:
-        print(f"未找到{cards_db_path},请下载后放在同一目录")
+    except Exception as ex:
+        logger.warn(ex)
+
+'''
+watchdog loop
+'''
+def watchdog_thread():
+    global sleep_time
+    while True:
+        if not check_if_process_running('Gevjon.exe'):
+            return
+        time.sleep(sleep_time)
+
+'''
+Check if there is any running process that contains the given name process name.(full name)
+'''
+def check_if_process_running(process_name):
+    #iterate over the all the running process
+    for proc in psutil.process_iter():
+        try:
+            # check if process name is the given name string.
+            if process_name.lower() == proc.name().lower():
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return False;  
+
+'''
+main
+'''
 def main():
     uac_reload()
-    # 加载游戏
     try:
         get_baseAddress()
-    except:
-        print("未找到地址，可能是游戏未启动 或 没有使用管理员权限运行MDT")
-    config_load()
-    keyboard.add_hotkey(switch_hotkey, status_change, args=(True, False, False))
-    keyboard.add_hotkey(exit_hotkey, status_change, args=(False, False, True))
-    keyboard.add_hotkey(pause_hotkey, status_change, args=(False, True, False))
+    except Exception as ex:
+        logger.warn(ex)
+    load_db()
     p = Thread(target=translate_check_thread)
+    p.start()
+    p = Thread(target=watchdog_thread)
     p.start()
     p.join()
 if __name__ == "__main__":
