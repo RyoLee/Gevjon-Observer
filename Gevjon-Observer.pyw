@@ -65,12 +65,12 @@ def send_to_pipe(msg: str):
     try:
         win32file.WriteFile(file_handle, str.encode(msg))
     except Exception as ex:
-        logger.warn(ex)
+        logger.warning(ex)
     finally:
         try:
             win32file.CloseHandle(file_handle)
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
 '''
 read memory
 '''
@@ -174,7 +174,7 @@ def print_card(cid: int):
             msg["mode"] = "issued"
             send_to_pipe(json.dumps(msg,ensure_ascii=False))
         except Exception as ex:
-            logger.warn(ex)
+            logger.warning(ex)
     else:
         return 0
 
@@ -185,6 +185,8 @@ def translate_check_thread():
     global sleep_time
     while True:
         translate()
+        if not check_if_process_running('Gevjon.exe'):
+            sys.exit()
         time.sleep(sleep_time)
 
 '''
@@ -237,17 +239,7 @@ def load_db():
         with open(CARDS_DB_PATH, "r", encoding='UTF-8') as f:
             cards_db = json.load(f)
     except Exception as ex:
-        logger.warn(ex)
-
-'''
-watchdog loop
-'''
-def watchdog_thread():
-    global sleep_time
-    while True:
-        if not check_if_process_running('Gevjon.exe'):
-            return
-        time.sleep(sleep_time)
+        logger.warning(ex)
 
 '''
 Check if there is any running process that contains the given name process name.(full name)
@@ -271,11 +263,9 @@ def main():
     try:
         get_baseAddress()
     except Exception as ex:
-        logger.warn(ex)
+        logger.warning(ex)
     load_db()
     p = Thread(target=translate_check_thread)
-    p.start()
-    p = Thread(target=watchdog_thread)
     p.start()
     p.join()
 if __name__ == "__main__":
