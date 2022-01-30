@@ -7,7 +7,8 @@ import time
 import json
 import win32file
 import os
-import ctypes, sys
+import ctypes
+import sys
 import atexit
 import logging
 import psutil
@@ -18,15 +19,16 @@ config
 PIPE_NAME = r'\\.\pipe\GevjonCore'
 CARDS_DB_PATH = 'cards.json'
 CORE_PATH = 'core'
-LOG_LEVEL=logging.INFO
+LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
-LOG_FORMAT='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
 
 '''
 init logger & global params
 '''
 logger = logging.getLogger(__name__)
-logger.setLevel(level = LOG_LEVEL)
+logger.setLevel(level=LOG_LEVEL)
 handler = logging.FileHandler(LOG_PATH)
 handler.setLevel(LOG_LEVEL)
 formatter = logging.Formatter(LOG_FORMAT)
@@ -44,15 +46,17 @@ duel_addr = None
 replay_addr = None
 sleep_time = 0.1
 
+
 '''
 close Gevjon when observer crash
 '''
-@atexit.register 
-def close_ui(): 
+@atexit.register
+def close_ui():
     if is_admin():
         logger.info("quit observer")
         logger.info("closing Gevjson")
         os.system("taskkill /f /im Gevjon.exe")
+
 
 '''
 send card data to Gevjon by namedpipe
@@ -71,6 +75,8 @@ def send_to_pipe(msg: str):
             win32file.CloseHandle(file_handle)
         except Exception as e:
             logger.warning(e)
+
+
 '''
 read memory
 '''
@@ -79,6 +85,7 @@ def read_longlongs(pm, base, offsets):
     for offset in offsets:
         value = pm.read_longlong(value + offset)
     return value
+
 
 '''
 search card id
@@ -99,7 +106,8 @@ def get_cid(type: int):
             return 0
     while type == 2:
         try:
-            duel_pointer_value = read_longlongs(pm, duel_addr, [0xB8, 0x0]) + 0x44
+            duel_pointer_value = read_longlongs(
+                pm, duel_addr, [0xB8, 0x0]) + 0x44
             duel_cid = pm.read_int(duel_pointer_value)
             return duel_cid
         except:
@@ -107,12 +115,14 @@ def get_cid(type: int):
     while type == 3:
         try:
             oppo_pointer_value = (
-                read_longlongs(pm, replay_addr, [0xB8, 0x0, 0xF8, 0x140]) + 0x20
+                read_longlongs(pm, replay_addr, [
+                               0xB8, 0x0, 0xF8, 0x140]) + 0x20
             )
             oppo_cid = pm.read_int(oppo_pointer_value)
             return oppo_cid
         except:
             return 0
+
 
 '''
 check cid by range
@@ -122,6 +132,7 @@ def valid_cid(cid: int):
         return True
     else:
         return False
+
 
 '''
 search cid
@@ -157,6 +168,7 @@ def translate():
     if cid_update:
         print_card(cid_show_gui)
 
+
 '''
 format description
 '''
@@ -164,19 +176,25 @@ def print_card(cid: int):
     if valid_cid(cid):
         try:
             card_t = cards_db[str(cid)]
-            msg ={}
+            msg = {}
             msg["id"] = str(card_t['id'])
             msg["name"] = card_t['cn_name']
-            msg["desc"] = '【'+card_t['en_name']+'】\n'+ '【'+card_t['jp_name']+'】\n'+ '【'+card_t['cn_name']+'】\n\n'+ str(card_t['text']['types'])+'\n\n\n'
-            if 'pdesc' in card_t["text"] and ""!=card_t["text"]["pdesc"]:
-                msg["desc"]+='------------------------\n'+str(card_t['text']['pdesc'])+'\n------------------------\n\n\n'
-            msg["desc"]+=card_t['text']['desc']
+            msg["desc"] = '【'+card_t['en_name']+'】\n' + \
+                          '【'+card_t['jp_name']+'】\n' + \
+                          '【'+card_t['cn_name']+'】\n\n' + \
+                          str(card_t['text']['types'])+'\n\n\n'
+            if 'pdesc' in card_t["text"] and "" != card_t["text"]["pdesc"]:
+                msg["desc"] += '------------------------\n' + \
+                    str(card_t['text']['pdesc']) + \
+                    '\n------------------------\n\n\n'
+            msg["desc"] += card_t['text']['desc']
             msg["mode"] = "issued"
-            send_to_pipe(json.dumps(msg,ensure_ascii=False))
+            send_to_pipe(json.dumps(msg, ensure_ascii=False))
         except Exception as ex:
             logger.warning(ex)
     else:
         return 0
+
 
 '''
 check loop
@@ -188,6 +206,7 @@ def translate_check_thread():
         if not check_if_process_running('Gevjon.exe'):
             sys.exit()
         time.sleep(sleep_time)
+
 
 '''
 find base address
@@ -225,10 +244,13 @@ start Gevjon & restart by admin
 '''
 def uac_reload():
     if not is_admin():
-        logger.info("current user is not admin,start Gevjon and restart observer as admin user")
-        stdout=os.popen('cd '+CORE_PATH+ ' && start Gevjon.exe ')
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+        logger.info(
+            "current user is not admin,start Gevjon and restart observer as admin user")
+        stdout = os.popen('cd '+CORE_PATH + ' && start Gevjon.exe ')
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, " ".join(sys.argv), None, 1)
         sys.exit()
+
 
 '''
 load data
@@ -241,11 +263,12 @@ def load_db():
     except Exception as ex:
         logger.warning(ex)
 
+
 '''
 Check if there is any running process that contains the given name process name.(full name)
 '''
 def check_if_process_running(process_name):
-    #iterate over the all the running process
+    # iterate over the all the running process
     for proc in psutil.process_iter():
         try:
             # check if process name is the given name string.
@@ -253,7 +276,8 @@ def check_if_process_running(process_name):
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
-    return False;  
+    return False
+
 
 '''
 main
@@ -268,5 +292,7 @@ def main():
     p = Thread(target=translate_check_thread)
     p.start()
     p.join()
+
+
 if __name__ == "__main__":
     main()
