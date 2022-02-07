@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 from threading import Thread
 import pymem
 import time
@@ -13,20 +12,17 @@ import atexit
 import logging
 import psutil
 
-'''
-config
-'''
-PIPE_NAME = r'\\.\pipe\GevjonCore'
-CARDS_DB_PATH = 'cards.json'
-CORE_PATH = 'core'
+
+### config start ###
+PIPE_NAME = r"\\.\pipe\GevjonCore"
+CARDS_DB_PATH = "cards.json"
+CORE_PATH = "core"
 LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+### config end ###
 
-
-'''
-init logger & global params
-'''
+# init logger & global params
 logger = logging.getLogger(__name__)
 logger.setLevel(level=LOG_LEVEL)
 handler = logging.FileHandler(LOG_PATH)
@@ -47,25 +43,30 @@ replay_addr = None
 sleep_time = 0.1
 
 
-'''
-close Gevjon when observer crash
-'''
 @atexit.register
 def close_ui():
+    """
+    close Gevjon when observer crash
+    """
     if is_admin():
         logger.info("quit observer")
         logger.info("closing Gevjson")
         os.system("taskkill /f /im Gevjon.exe")
 
 
-'''
-send card data to Gevjon by namedpipe
-'''
 def send_to_pipe(msg: str):
-    file_handle = win32file.CreateFile(PIPE_NAME,
-                                       win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                                       win32file.FILE_SHARE_WRITE, None,
-                                       win32file.OPEN_EXISTING, 0, None)
+    """
+    send card data to Gevjon by namedpipe
+    """
+    file_handle = win32file.CreateFile(
+        PIPE_NAME,
+        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+        win32file.FILE_SHARE_WRITE,
+        None,
+        win32file.OPEN_EXISTING,
+        0,
+        None,
+    )
     try:
         win32file.WriteFile(file_handle, str.encode(msg))
     except Exception as ex:
@@ -77,20 +78,20 @@ def send_to_pipe(msg: str):
             logger.warning(e)
 
 
-'''
-read memory
-'''
 def read_longlongs(pm, base, offsets):
+    """
+    read memory
+    """
     value = pm.read_longlong(base)
     for offset in offsets:
         value = pm.read_longlong(value + offset)
     return value
 
 
-'''
-search card id
-'''
 def get_cid(type: int):
+    """
+    search card id
+    """
     global pm
     global deck_addr
     global duel_addr
@@ -106,8 +107,7 @@ def get_cid(type: int):
             return 0
     while type == 2:
         try:
-            duel_pointer_value = read_longlongs(
-                pm, duel_addr, [0xB8, 0x0]) + 0x44
+            duel_pointer_value = read_longlongs(pm, duel_addr, [0xB8, 0x0]) + 0x44
             duel_cid = pm.read_int(duel_pointer_value)
             return duel_cid
         except:
@@ -115,8 +115,7 @@ def get_cid(type: int):
     while type == 3:
         try:
             oppo_pointer_value = (
-                read_longlongs(pm, replay_addr, [
-                               0xB8, 0x0, 0xF8, 0x140]) + 0x20
+                read_longlongs(pm, replay_addr, [0xB8, 0x0, 0xF8, 0x140]) + 0x20
             )
             oppo_cid = pm.read_int(oppo_pointer_value)
             return oppo_cid
@@ -124,20 +123,20 @@ def get_cid(type: int):
             return 0
 
 
-'''
-check cid by range
-'''
 def valid_cid(cid: int):
+    """
+    check cid by range
+    """
     if cid > 4000 and cid < 20000:
         return True
     else:
         return False
 
 
-'''
-search cid
-'''
 def translate():
+    """
+    search cid
+    """
     global cid_temp_duel
     global cid_temp_deck
     global cid_temp_oppo
@@ -169,25 +168,40 @@ def translate():
         print_card(cid_show_gui)
 
 
-'''
-format description
-'''
 def print_card(cid: int):
+    """
+    format description
+    """
     if valid_cid(cid):
         try:
             card_t = cards_db[str(cid)]
             msg = {}
-            msg["id"] = str(card_t['id'])
-            msg["name"] = card_t['cn_name']
-            msg["desc"] = '【'+card_t['en_name']+'】\n' + \
-                          '【'+card_t['jp_name']+'】\n' + \
-                          '【'+card_t['cn_name']+'】\n\n' + \
-                          str(card_t['text']['types'])+'\n\n\n'
-            if 'pdesc' in card_t["text"] and "" != card_t["text"]["pdesc"]:
-                msg["desc"] += '------------------------\n' + \
-                    str(card_t['text']['pdesc']) + \
-                    '\n------------------------\n\n\n'
-            msg["desc"] += card_t['text']['desc']
+            msg["id"] = str(card_t["id"])
+            msg["name"] = card_t["cn_name"]
+            # fmt: off
+            msg["desc"] = (
+                  "【" + card_t["en_name"] + "】"
+                + "\n"
+                + "【" + card_t["jp_name"] + "】"
+                + "\n"
+                + "【" + card_t["cn_name"] + "】"
+                + "\n\n"
+                + str(card_t["text"]["types"])
+                + "\n\n\n"
+            )
+            # fmt: on
+            if "pdesc" in card_t["text"] and "" != card_t["text"]["pdesc"]:
+                # fmt: off
+                msg["desc"] += (
+                      "------------------------"
+                    + "\n"
+                    + str(card_t["text"]["pdesc"])
+                    + "\n"
+                    + "------------------------"
+                    + "\n\n\n"
+                )
+                # fmt: on
+            msg["desc"] += card_t["text"]["desc"]
             msg["mode"] = "issued"
             send_to_pipe(json.dumps(msg, ensure_ascii=False))
         except Exception as ex:
@@ -196,22 +210,22 @@ def print_card(cid: int):
         return 0
 
 
-'''
-check loop
-'''
 def translate_check_thread():
+    """
+    check loop
+    """
     global sleep_time
     while True:
         translate()
-        if not check_if_process_running('Gevjon.exe'):
+        if not check_if_process_running("Gevjon.exe"):
             sys.exit()
         time.sleep(sleep_time)
 
 
-'''
-find base address
-'''
 def get_baseAddress():
+    """
+    find base address
+    """
     global pm
     global baseAddress
     global deck_addr
@@ -223,51 +237,52 @@ def get_baseAddress():
         pm.process_handle, "GameAssembly.dll"
     ).lpBaseOfDll
     logger.info("address found!")
-    # deck/duel/replay
     deck_addr = baseAddress + int("0x01CCD278", base=16)
     duel_addr = baseAddress + int("0x01cb2b90", base=16)
     replay_addr = baseAddress + int("0x01CCD278", base=16)
 
 
-'''
-check privilege
-'''
 def is_admin():
+    """
+    check privilege
+    """
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
     except:
         return False
 
 
-'''
-start Gevjon & restart by admin
-'''
 def uac_reload():
+    """
+    start Gevjon & restart by admin
+    """
     if not is_admin():
         logger.info(
-            "current user is not admin,start Gevjon and restart observer as admin user")
-        stdout = os.popen('cd '+CORE_PATH + ' && start Gevjon.exe ')
+            "current user is not admin,start Gevjon and restart observer as admin user"
+        )
+        stdout = os.popen("cd " + CORE_PATH + " && start Gevjon.exe ")
         ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+            None, "runas", sys.executable, " ".join(sys.argv), None, 1
+        )
         sys.exit()
 
 
-'''
-load data
-'''
 def load_db():
+    """
+    load data
+    """
     global cards_db
     try:
-        with open(CARDS_DB_PATH, "r", encoding='UTF-8') as f:
+        with open(CARDS_DB_PATH, "r", encoding="UTF-8") as f:
             cards_db = json.load(f)
     except Exception as ex:
         logger.warning(ex)
 
 
-'''
-Check if there is any running process that contains the given name process name.(full name)
-'''
 def check_if_process_running(process_name):
+    """
+    check if there is any running process that contains the given name process name.(full name)
+    """
     # iterate over the all the running process
     for proc in psutil.process_iter():
         try:
@@ -279,9 +294,6 @@ def check_if_process_running(process_name):
     return False
 
 
-'''
-main
-'''
 def main():
     uac_reload()
     try:
