@@ -107,7 +107,7 @@ def get_cid(type: int):
             return 0
     while type == 2:
         try:
-            duel_pointer_value = read_longlongs(pm, duel_addr, [0xB8, 0x0]) + 0x44
+            duel_pointer_value = read_longlongs(pm, duel_addr, [0xB8, 0x10]) + 0x44
             duel_cid = pm.read_int(duel_pointer_value)
             return duel_cid
         except:
@@ -237,9 +237,9 @@ def get_baseAddress():
         pm.process_handle, "GameAssembly.dll"
     ).lpBaseOfDll
     logger.info("address found!")
-    deck_addr = baseAddress + int("0x01CCD278", base=16)
-    duel_addr = baseAddress + int("0x01cb2b90", base=16)
-    replay_addr = baseAddress + int("0x01CCD278", base=16)
+    deck_addr = baseAddress + int("0x01CCE3C0", base=16)
+    duel_addr = baseAddress + int("0x01BD3FD8", base=16)
+    replay_addr = baseAddress + int("0x01CCE3C0", base=16)
 
 
 def is_admin():
