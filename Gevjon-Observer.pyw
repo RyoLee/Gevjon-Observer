@@ -12,19 +12,20 @@ import atexit
 import logging
 import psutil
 import requests
-import webbrowser 
+import webbrowser
 
 ### config start ###
-AUTO_UPDATE= True
+AUTO_UPDATE = True
+MAX_RETRY = 3
 PIPE_NAME = r"\\.\pipe\GevjonCore"
 CARDS_DB_PATH = "cards.json"
 CORE_PATH = "core"
 LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-PRO_URL="https://github.com/RyoLee/Gevjon-Observer/tree/PY-MR/"
-VERSION_URL="https://raw.githubusercontents.com/RyoLee/Gevjon-Observer/PY-MR/version"
-USER_COUNT_URL="https://hits.dwyl.com/RyoLee/Gevjon.svg"
+PRO_URL = "https://github.com/RyoLee/Gevjon-Observer/tree/PY-MR/"
+VERSION_URL = "https://cdn.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version"
+USER_COUNT_URL = "https://hits.dwyl.com/RyoLee/Gevjon.svg"
 ### config end ###
 
 # init logger & global params
@@ -52,19 +53,24 @@ class Version:
     """
     version format MAJOR.MINOR.PATCH
     """
+
     def __init__(self, ver_str):
-        if isinstance(ver_str,str):
-            self.Major, self.Minor, self.Patch = map(int, ver_str.split('.'))
+        if isinstance(ver_str, str):
+            self.Major, self.Minor, self.Patch = map(int, ver_str.split("."))
 
     def __repr__(self):
         return "{}.{}.{}".format(self.Major, self.Minor, self.Patch)
 
     def __eq__(self, other):
-        return self.Major == other.Major and self.Minor == other.Minor and self.Patch == other.Patch
+        return (
+            self.Major == other.Major
+            and self.Minor == other.Minor
+            and self.Patch == other.Patch
+        )
 
     def __hash__(self):
         hash(str(self))
-        
+
     def __lt__(self, other):
         if other.Major != self.Major:
             return self.Major < other.Major
@@ -332,6 +338,7 @@ def check_if_process_running(process_name):
             pass
     return False
 
+
 def check_update():
     """
     check update
@@ -339,16 +346,35 @@ def check_update():
     try:
         with open("version", "r", encoding="UTF-8") as f:
             cur_version = f.read()
-            tar_version = requests.get(VERSION_URL).content.decode('utf-8')
-            if(Version(tar_version)>Version(cur_version)):
-                requests.get(USER_COUNT_URL)    #user count
-                webbrowser.open_new_tab(PRO_URL)
-                exit(0)
+            retry = 0
+            while MAX_RETRY > retry:
+                try:
+                    tar_version = requests.get(url=VERSION_URL).content.decode("utf-8")
+                    # fmt: off
+                    logger.info("checking version...current[" + cur_version + "]->latest[" + tar_version + "]")
+                    # fmt: on
+                    if Version(tar_version) > Version(cur_version):
+                        if 6 == ctypes.windll.user32.MessageBoxW(
+                            0,
+                            "New version:\t" + tar_version + "\nUpdate now?",
+                            "New version found",
+                            0x04 | 0x40,
+                        ):
+                            requests.get(USER_COUNT_URL)
+                            webbrowser.open_new_tab(PRO_URL)
+                            exit(0)
+                        else:
+                            return
+                    else:
+                        return
+                except Exception as ex:
+                    retry += 1
+                    logger.warning(ex)
     except Exception as ex:
         logger.warning(ex)
 
+
 def main():
-    uac_reload()
     try:
         get_baseAddress()
     except Exception as ex:
@@ -360,6 +386,7 @@ def main():
 
 
 if __name__ == "__main__":
+    uac_reload()
     if AUTO_UPDATE:
         check_update()
     main()
