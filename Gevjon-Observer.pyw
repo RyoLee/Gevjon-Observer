@@ -11,15 +11,20 @@ import sys
 import atexit
 import logging
 import psutil
-
+import requests
+import webbrowser 
 
 ### config start ###
+AUTO_UPDATE= True
 PIPE_NAME = r"\\.\pipe\GevjonCore"
 CARDS_DB_PATH = "cards.json"
 CORE_PATH = "core"
 LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+PRO_URL="https://github.com/RyoLee/Gevjon-Observer/tree/PY-MR/"
+VERSION_URL="https://raw.githubusercontents.com/RyoLee/Gevjon-Observer/PY-MR/version"
+USER_COUNT_URL="https://hits.dwyl.com/RyoLee/Gevjon.svg"
 ### config end ###
 
 # init logger & global params
@@ -327,6 +332,20 @@ def check_if_process_running(process_name):
             pass
     return False
 
+def check_update():
+    """
+    check update
+    """
+    try:
+        with open("version", "r", encoding="UTF-8") as f:
+            cur_version = f.read()
+            tar_version = requests.get(VERSION_URL).content.decode('utf-8')
+            if(Version(tar_version)>Version(cur_version)):
+                requests.get(USER_COUNT_URL)    #user count
+                webbrowser.open_new_tab(PRO_URL)
+                exit(0)
+    except Exception as ex:
+        logger.warning(ex)
 
 def main():
     uac_reload()
@@ -341,4 +360,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if AUTO_UPDATE:
+        check_update()
     main()

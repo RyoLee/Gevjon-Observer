@@ -1,4 +1,8 @@
 # Gevjon-Observer
+
+![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/RyoLee/Gevjon-Observer?include_prereleases&style=flat-square)
+[![HitCount](https://hits.dwyl.com/RyoLee/Gevjon.svg?style=flat-square)](https://github.com/RyoLee/Gevjon-Observer/tree/PY-MR/)
+
 [RyoLee/Gevjon](https://github.com/RyoLee/Gevjon/) 控制器
 
 不同分支对应不同实现，以分支Readme文档为准
