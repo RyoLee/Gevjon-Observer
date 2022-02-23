@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from threading import Thread
+from urllib.request import urlopen
 import pymem
 import time
 import json
@@ -11,7 +12,6 @@ import sys
 import atexit
 import logging
 import psutil
-import requests
 import webbrowser
 
 ### config start ###
@@ -349,7 +349,7 @@ def check_update():
             retry = 0
             while MAX_RETRY > retry:
                 try:
-                    tar_version = requests.get(url=VERSION_URL).content.decode("utf-8")
+                    tar_version = urlopen(VERSION_URL).read().decode("utf-8")
                     # fmt: off
                     logger.info("checking version...current[" + cur_version + "]->latest[" + tar_version + "]")
                     # fmt: on
@@ -360,7 +360,7 @@ def check_update():
                             "New version found",
                             0x04 | 0x40,
                         ):
-                            requests.get(USER_COUNT_URL)
+                            urlopen(USER_COUNT_URL).decode("utf-8")
                             webbrowser.open_new_tab(PRO_URL)
                             exit(0)
                         else:
@@ -386,7 +386,7 @@ def main():
 
 
 if __name__ == "__main__":
-    uac_reload()
-    if AUTO_UPDATE:
+    if not is_admin() and AUTO_UPDATE:
         check_update()
+    uac_reload()
     main()
