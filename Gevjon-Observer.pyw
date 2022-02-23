@@ -43,6 +43,40 @@ replay_addr = None
 sleep_time = 0.1
 
 
+class Version:
+    """
+    version format MAJOR.MINOR.PATCH
+    """
+    def __init__(self, ver_str):
+        if isinstance(ver_str,str):
+            self.Major, self.Minor, self.Patch = map(int, ver_str.split('.'))
+
+    def __repr__(self):
+        return "{}.{}.{}".format(self.Major, self.Minor, self.Patch)
+
+    def __eq__(self, other):
+        return self.Major == other.Major and self.Minor == other.Minor and self.Patch == other.Patch
+
+    def __hash__(self):
+        hash(str(self))
+        
+    def __lt__(self, other):
+        if other.Major != self.Major:
+            return self.Major < other.Major
+        elif other.Minor != self.Minor:
+            return self.Minor < other.Minor
+        else:
+            return self.Patch < other.Patch
+
+    def __gt__(self, other):
+        if other.Major != self.Major:
+            return self.Major > other.Major
+        elif other.Minor != self.Minor:
+            return self.Minor > other.Minor
+        else:
+            return self.Patch > other.Patch
+
+
 @atexit.register
 def close_ui():
     """
