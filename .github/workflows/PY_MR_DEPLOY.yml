@@ -20,13 +20,10 @@ jobs:
         with:
           fetch-depth: 0
           ref: PY-MR
-      - name: Purge CDN cache
-        run: curl https://purge.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version
       - name: Create Release
         uses: google-github-actions/release-please-action@v3
         with:
           command: manifest
-          version-file: "./version.test"
   build:
     if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
     runs-on: ubuntu-latest
