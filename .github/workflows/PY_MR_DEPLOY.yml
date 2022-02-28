@@ -1,4 +1,4 @@
-name: PURGE_CACHE
+name: PY_MR_DEPLOY
 on:
   push:
     branches: [ PY-MR ]
