@@ -20,11 +20,14 @@ jobs:
         with:
           fetch-depth: 0
           ref: PY-MR
+      - name: Set Version
+        run: |
+          VER=$(head -n 1 version.txt)
+          echo "TAG_NAME=$VER" >> $GITHUB_ENV
       - name: Create Release
-        uses: google-github-actions/release-please-action@v3
+        uses: softprops/action-gh-release@v1
         with:
-          release-type: simple
-          command: github-release
+          tag_name: ${{ env.TAG_NAME }}
   build:
     if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
     runs-on: ubuntu-latest
