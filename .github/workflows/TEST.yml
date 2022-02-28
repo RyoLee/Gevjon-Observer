@@ -1,4 +1,4 @@
-name: PURGE_CACHE
+name: TEST
 on:
   push:
     branches: [ PY-MR ]
@@ -20,25 +20,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: PY-MR
-      - name: Set Version
-        run: |
-          VER=$(head -n 1 version.txt)
-          echo "TAG_NAME=$VER" >> $GITHUB_ENV
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.TAG_NAME }}
-  build:
-    if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          ref: PY-MR
-      - name: Purge CDN cache
-        run: curl https://purge.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version.txt
       - name: Set Version
         run: |
           VER=$(head -n 1 version.txt)
