@@ -3,11 +3,11 @@ on:
   push:
     branches: [ PY-MR ]
     paths:
-      - 'version'
+      - 'version.txt'
   workflow_dispatch:
     inputs:
-      environment:
-        type: string
+      action:
+        type: environment
         default: test
         required: true
 jobs:
@@ -38,9 +38,12 @@ jobs:
           fetch-depth: 0
           ref: PY-MR
       - name: Purge CDN cache
-        run: curl https://purge.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version
+        run: curl https://purge.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version.txt
+      - name: Set Version
+        run: |
+          VER=$(head -n 1 version.txt)
+          echo "TAG_NAME=$VER" >> $GITHUB_ENV
       - name: Create Release
-        uses: google-github-actions/release-please-action@v3
+        uses: softprops/action-gh-release@v1
         with:
-          command: manifest
-          version-file: "version"
+          tag_name: ${{ env.TAG_NAME }}
