@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
+        type: string
         default: test
-        type: environment
-        required: true 
+        required: true
 jobs:
   test:
     if: ${{ github.event.inputs.environment == 'test' }}
