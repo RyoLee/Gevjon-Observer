@@ -96,7 +96,7 @@ def close_ui():
     if is_admin():
         logger.info("quit observer")
         logger.info("closing Gevjson")
-        os.system("taskkill /f /im Gevjon.exe")
+        os.popen("taskkill /f /im Gevjon.exe")
 
 
 def send_to_pipe(msg: str):
