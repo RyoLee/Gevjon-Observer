@@ -24,7 +24,7 @@ LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 PRO_URL = "https://github.com/RyoLee/Gevjon-Observer/tree/PY-MR/"
-VERSION_URL = "https://cdn.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version"
+VERSION_URL = "https://cdn.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version.txt"
 USER_COUNT_URL = "https://hits.dwyl.com/RyoLee/Gevjon.svg"
 ### config end ###
 
@@ -344,7 +344,7 @@ def check_update():
     check update
     """
     try:
-        with open("version", "r", encoding="UTF-8") as f:
+        with open("version.txt", "r", encoding="UTF-8") as f:
             cur_version = f.read()
             retry = 0
             while MAX_RETRY > retry:
