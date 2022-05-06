@@ -39,13 +39,11 @@ logger.addHandler(handler)
 cid_temp = 0
 cid_temp_duel = 0
 cid_temp_deck = 0
-cid_temp_oppo = 0
 cid_show_gui = 0
 baseAddress = None
 pm = {}
 deck_addr = None
 duel_addr = None
-replay_addr = None
 sleep_time = 0.1
 
 
@@ -140,11 +138,10 @@ def get_cid(type: int):
     global pm
     global deck_addr
     global duel_addr
-    global replay_addr
     while type == 1:
         try:
             deck_pointer_value = (
-                read_longlongs(pm, deck_addr, [0xB8, 0x0, 0xF8, 0x1D8]) + 0x20
+                read_longlongs(pm, deck_addr, [0xB8, 0x0, 0xF8, 0x1E0]) + 0x2C
             )
             deck_cid = pm.read_int(deck_pointer_value)
             return deck_cid
@@ -152,18 +149,9 @@ def get_cid(type: int):
             return 0
     while type == 2:
         try:
-            duel_pointer_value = read_longlongs(pm, duel_addr, [0xB8, 0x10]) + 0x44
+            duel_pointer_value = read_longlongs(pm, duel_addr, [0xB8, 0x10]) + 0x4C
             duel_cid = pm.read_int(duel_pointer_value)
             return duel_cid
-        except:
-            return 0
-    while type == 3:
-        try:
-            oppo_pointer_value = (
-                read_longlongs(pm, replay_addr, [0xB8, 0x0, 0xF8, 0x140]) + 0x20
-            )
-            oppo_cid = pm.read_int(oppo_pointer_value)
-            return oppo_cid
         except:
             return 0
 
@@ -184,7 +172,6 @@ def translate():
     """
     global cid_temp_duel
     global cid_temp_deck
-    global cid_temp_oppo
     global cid_show_gui
     global baseAddress
     if baseAddress is None:
@@ -194,13 +181,8 @@ def translate():
             return
     cid_deck = get_cid(1)
     cid_duel = get_cid(2)
-    cid_oppo = get_cid(3)
     cid_update = False
 
-    if valid_cid(cid_oppo) and cid_oppo != cid_temp_oppo:
-        cid_temp_oppo = cid_oppo
-        cid_update = True
-        cid_show_gui = cid_oppo
     if valid_cid(cid_deck) and cid_deck != cid_temp_deck:
         cid_temp_deck = cid_deck
         cid_update = True
@@ -275,16 +257,14 @@ def get_baseAddress():
     global baseAddress
     global deck_addr
     global duel_addr
-    global replay_addr
     pm = pymem.Pymem("masterduel.exe")
     logger.info("Process id: %s" % pm.process_id)
     baseAddress = pymem.process.module_from_name(
         pm.process_handle, "GameAssembly.dll"
     ).lpBaseOfDll
     logger.info("address found!")
-    deck_addr = baseAddress + int("0x01CCE3C0", base=16)
-    duel_addr = baseAddress + int("0x01BD3FD8", base=16)
-    replay_addr = baseAddress + int("0x01CCE3C0", base=16)
+    deck_addr = baseAddress + int("0x01E99C18", base=16)
+    duel_addr = baseAddress + int("0x01DBDC88", base=16)
 
 
 def is_admin():
