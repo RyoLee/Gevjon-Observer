@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from threading import Thread
-from urllib.request import urlopen
+from urllib.request import urlopen,Request
 import pymem
 import time
 import json
@@ -304,7 +304,9 @@ def check_update():
             retry = 0
             while MAX_RETRY > retry:
                 try:
-                    tar_version = urlopen(VERSION_URL).read().decode("utf-8")
+                    headers = {'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
+                    req = Request(url=VERSION_URL, headers=headers)
+                    tar_version = urlopen(req).read().decode("utf-8")
                     # fmt: off
                     logger.info("checking version...current[" + cur_version + "]->latest[" + tar_version + "]")
                     # fmt: on
@@ -315,8 +317,9 @@ def check_update():
                             "New version found",
                             0x04 | 0x40,
                         ):
-                            urlopen(USER_COUNT_URL).decode("utf-8")
                             webbrowser.open_new_tab(PRO_URL)
+                            req = Request(url=USER_COUNT_URL, headers=headers)
+                            urlopen(req).read()
                             exit(0)
                         else:
                             return
