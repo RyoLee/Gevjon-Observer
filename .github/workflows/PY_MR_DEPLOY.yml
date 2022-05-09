@@ -1,33 +1,11 @@
 name: PY_MR_DEPLOY
 on:
   push:
-    branches: [ PY-MR ]
+    branches: [PY-MR]
     paths:
-      - 'version.txt'
+      - "version.txt"
   workflow_dispatch:
-    inputs:
-      action:
-        type: environment
-        default: test
-        required: true
 jobs:
-  test:
-    if: ${{ github.event.inputs.environment == 'test' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          ref: PY-MR
-      - name: Set Version
-        run: |
-          VER=$(head -n 1 version.txt)
-          echo "TAG_NAME=$VER" >> $GITHUB_ENV
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.TAG_NAME }}
   build:
     if: ${{ github.event_name == 'push' && github.ref_name == 'PY-MR' }}
     runs-on: ubuntu-latest
@@ -37,6 +15,13 @@ jobs:
         with:
           fetch-depth: 0
           ref: PY-MR
+      - name: Update DB
+        run: |
+          wget -nc -O - https://ygocdb.com/api/v0/cards.zip | gunzip - > cards.json
+      - name: Deploy
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "autobuild"
       - name: Purge CDN cache
         run: curl https://purge.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version.txt
       - name: Set Version
