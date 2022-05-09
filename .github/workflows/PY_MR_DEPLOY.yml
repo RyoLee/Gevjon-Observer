@@ -15,20 +15,60 @@ jobs:
         with:
           fetch-depth: 0
           ref: PY-MR
-      - name: Update DB
+      - name: Pack
         run: |
-          wget -nc -O - https://ygocdb.com/api/v0/cards.zip | gunzip - > cards.json
-      - name: Deploy
-        uses: stefanzweifel/git-auto-commit-action@v4
+          mkdir -p ./build/core
+          mkdir -p ./tmp
+          mkdir -p ./public
+          wget -q -O tmp/Gevjon.7z https://github.com/RyoLee/Gevjon/raw/gh-pages/Gevjon.7z
+          cd tmp
+          7z x Gevjon.7z
+          rm Gevjon.7z -f
+          cd ..
+          mv ./tmp/* ./build/core/
+          wget -q -O - https://ygocdb.com/api/v0/cards.zip | gunzip - > ./build/core/cards.json
+          cp Gevjon-Observer.pyw ./build/
+          cp LICENSE ./build/
+          cp README.md ./build/
+          cp requirements.txt ./build/
+          cp version.txt ./build/
+          cd build
+          7z a Gevjon-Observer.7z *
+          cd ..
+          mv ./build/Gevjon-Observer.7z ./public/
+          mv ./build/version.txt ./public/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
         with:
-          commit_message: "autobuild"
+          name: Gevjon
+          retention-days: 1
+          path: |
+            public/Gevjon-Observer.7z
+            public/version.txt
+            
       - name: Purge CDN cache
         run: curl https://purge.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version.txt
-      - name: Set Version
-        run: |
-          VER=$(head -n 1 version.txt)
-          echo "TAG_NAME=$VER" >> $GITHUB_ENV
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.TAG_NAME }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:      
+    - name: Download artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: Gevjon
+        path: public
+    - name: Set Version
+      run: |
+        VER=$(head -n 1 public/version.txt)
+        echo "TAG_NAME=$VER" >> $GITHUB_ENV
+        CONTENT="Checksum(SHA256): "$(sha256sum public//Gevjon-Observer.7z | awk '{print $1}')
+        echo "DEFAULT_CONTENT=$CONTENT" >> $GITHUB_ENV
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body: ${{ env.DEFAULT_CONTENT }}
+        generate_release_notes: true
+        tag_name: ${{ env.TAG_NAME }}
+        files: public/Gevjon-Observer.7z
