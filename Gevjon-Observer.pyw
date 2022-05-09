@@ -18,7 +18,7 @@ import webbrowser
 AUTO_UPDATE = True
 MAX_RETRY = 3
 PIPE_NAME = r"\\.\pipe\GevjonCore"
-CARDS_DB_PATH = "cards.json"
+CARDS_DB_FILE = "cards.json"
 CORE_PATH = "core"
 LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
@@ -298,7 +298,7 @@ def load_db():
     """
     global cards_db
     try:
-        with open(CARDS_DB_PATH, "r", encoding="UTF-8") as f:
+        with open(CORE_PATH + "/" + CARDS_DB_FILE, "r", encoding="UTF-8") as f:
             cards_db = json.load(f)
     except Exception as ex:
         logger.warning(ex)
