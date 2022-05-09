@@ -23,7 +23,7 @@ CORE_PATH = "core"
 LOG_LEVEL = logging.INFO
 LOG_PATH = "log.txt"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-PRO_URL = "https://github.com/RyoLee/Gevjon-Observer/tree/PY-MR/"
+PRO_URL = "https://github.com/RyoLee/Gevjon-Observer/releases/latest"
 VERSION_URL = "https://cdn.jsdelivr.net/gh/RyoLee/Gevjon-Observer@PY-MR/version.txt"
 USER_COUNT_URL = "https://hits.dwyl.com/RyoLee/Gevjon.svg"
 ### config end ###
