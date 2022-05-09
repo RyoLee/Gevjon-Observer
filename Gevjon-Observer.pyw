@@ -203,33 +203,8 @@ def print_card(cid: int):
         try:
             card_t = cards_db[str(cid)]
             msg = {}
-            msg["id"] = str(card_t["id"])
-            msg["name"] = card_t["cn_name"]
-            # fmt: off
-            msg["desc"] = (
-                  "【" + card_t["en_name"] + "】"
-                + "\n"
-                + "【" + card_t["jp_name"] + "】"
-                + "\n"
-                + "【" + card_t["cn_name"] + "】"
-                + "\n\n"
-                + str(card_t["text"]["types"])
-                + "\n\n\n"
-            )
-            # fmt: on
-            if "pdesc" in card_t["text"] and "" != card_t["text"]["pdesc"]:
-                # fmt: off
-                msg["desc"] += (
-                      "------------------------"
-                    + "\n"
-                    + str(card_t["text"]["pdesc"])
-                    + "\n"
-                    + "------------------------"
-                    + "\n\n\n"
-                )
-                # fmt: on
-            msg["desc"] += card_t["text"]["desc"]
             msg["mode"] = "issued"
+            msg["data"] = json.dumps(card_t, ensure_ascii=False)
             send_to_pipe(json.dumps(msg, ensure_ascii=False))
         except Exception as ex:
             logger.warning(ex)
