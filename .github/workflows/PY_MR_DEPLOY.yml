@@ -20,13 +20,14 @@ jobs:
           mkdir -p ./build/core
           mkdir -p ./tmp
           mkdir -p ./public
-          wget -q -O tmp/Gevjon.7z https://github.com/RyoLee/Gevjon/raw/gh-pages/Gevjon.7z
+          wget -q -O ./tmp/Gevjon.7z https://github.com/RyoLee/Gevjon/raw/gh-pages/Gevjon.7z
           cd tmp
           7z x Gevjon.7z
           rm Gevjon.7z -f
           cd ..
           mv ./tmp/* ./build/core/
           wget -q -O - https://ygocdb.com/api/v0/cards.zip | gunzip - > ./build/core/cards.json
+          wget -q -O ./build/core/cards.ver https://ygocdb.com/api/v0/cards.zip.md5
           cp Gevjon-Observer.pyw ./build/
           cp LICENSE ./build/
           cp README.md ./build/
