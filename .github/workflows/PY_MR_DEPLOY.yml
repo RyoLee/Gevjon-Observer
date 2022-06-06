@@ -27,7 +27,8 @@ jobs:
           cd ..
           mv ./tmp/* ./build/core/
           wget -q -O - https://ygocdb.com/api/v0/cards.zip | gunzip - > ./build/core/cards.json
-          wget -q -O ./build/core/cards.ver https://ygocdb.com/api/v0/cards.zip.md5
+          ver=$(curl -s https://ygocdb.com/api/v0/cards.zip.md5|tr -d '"')
+          echo "$(jq --arg variable "$ver" '.dataVer = $variable' ./build/core/config.json)" > ./build/core/config.json
           cp Gevjon-Observer.pyw ./build/
           cp LICENSE ./build/
           cp README.md ./build/
